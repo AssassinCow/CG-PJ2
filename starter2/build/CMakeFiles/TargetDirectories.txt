@@ -1,0 +1,6 @@
+/home/lzx/my_workspace/CG/PJ2/starter2/build/CMakeFiles/a2.dir
+/home/lzx/my_workspace/CG/PJ2/starter2/build/CMakeFiles/edit_cache.dir
+/home/lzx/my_workspace/CG/PJ2/starter2/build/CMakeFiles/rebuild_cache.dir
+/home/lzx/my_workspace/CG/PJ2/starter2/build/vecmath/CMakeFiles/vecmath.dir
+/home/lzx/my_workspace/CG/PJ2/starter2/build/vecmath/CMakeFiles/edit_cache.dir
+/home/lzx/my_workspace/CG/PJ2/starter2/build/vecmath/CMakeFiles/rebuild_cache.dir

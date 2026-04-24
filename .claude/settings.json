@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/**)",
+      "Bash(unzip -o Project2说明.pptx -d /tmp/pptx_contents/)",
+      "Read(//tmp/pptx_contents/ppt/**)",
+      "Bash(make)",
+      "Bash(./a2 -input ../data/scene01_plane.txt -output out/01.png -size 200 200)"
+    ]
+  }
+}

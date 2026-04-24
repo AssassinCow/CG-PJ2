@@ -79,26 +79,105 @@ bool Group::intersect(const Ray &r, float tmin, Hit &h) const
 
 
 Plane::Plane(const Vector3f &normal, float d, Material *m) : Object3D(m) {
-    // TODO implement Plane constructor
+    _normal = normal.normalized();
+    _d = d;
 }
 bool Plane::intersect(const Ray &r, float tmin, Hit &h) const
 {
-    // TODO implement
-    return false;
+    // Plane: P . n = d
+    // Ray: P = o + t*d_r
+    // t = (d - o . n) / (d_r . n)
+    const Vector3f &o = r.getOrigin();
+    const Vector3f &dir = r.getDirection();
+
+    float denom = Vector3f::dot(dir, _normal);
+    if (std::fabs(denom) < 1e-8f) {
+        return false; // ray parallel to plane
+    }
+
+    float t = (_d - Vector3f::dot(o, _normal)) / denom;
+    if (t < tmin || t >= h.getT()) {
+        return false;
+    }
+
+    h.set(t, this->material, _normal);
+    return true;
 }
-bool Triangle::intersect(const Ray &r, float tmin, Hit &h) const 
+bool Triangle::intersect(const Ray &r, float tmin, Hit &hit) const
 {
-    // TODO implement
-    return false;
+    // Moller-Trumbore: solve [ -d | v1-v0 | v2-v0 ] * [t, beta, gamma]^T = (o - v0)
+    const Vector3f &o = r.getOrigin();
+    const Vector3f &d = r.getDirection();
+
+    const Vector3f &a = _v[0];
+    const Vector3f &b = _v[1];
+    const Vector3f &c = _v[2];
+
+    // Matrix A: columns are [-d, b - a, c - a] => but Matrix3f takes columns or rows
+    // We solve A * x = (o - a) where A = [a-b, a-c, d] for barycentric per slide hint.
+    // Use classic form: columns are [a-b, a-c, d], x = [beta, gamma, t]
+    Vector3f col0 = a - b;
+    Vector3f col1 = a - c;
+    Vector3f col2 = d;
+    Matrix3f A(col0, col1, col2, true);
+    Vector3f rhs = a - o;
+
+    bool singular = false;
+    Matrix3f Ainv = A.inverse(&singular, 1e-8f);
+    if (singular) {
+        return false;
+    }
+
+    Vector3f x = Ainv * rhs;
+    float beta  = x[0];
+    float gamma = x[1];
+    float t     = x[2];
+    float alpha = 1.0f - beta - gamma;
+
+    if (t < tmin || t >= hit.getT()) {
+        return false;
+    }
+    if (beta < 0.0f || gamma < 0.0f || alpha < 0.0f) {
+        return false;
+    }
+    if (beta > 1.0f || gamma > 1.0f || alpha > 1.0f) {
+        return false;
+    }
+
+    // Interpolate normal using barycentric coords
+    Vector3f n = alpha * _normals[0] + beta * _normals[1] + gamma * _normals[2];
+    n = n.normalized();
+    hit.set(t, this->material, n);
+    return true;
 }
 
 
 Transform::Transform(const Matrix4f &m,
     Object3D *obj) : _object(obj) {
-    // TODO implement Transform constructor
+    _M = m;
+    _Minv = m.inverse();
+    _MinvT = _Minv.transposed();
 }
 bool Transform::intersect(const Ray &r, float tmin, Hit &h) const
 {
-    // TODO implement
+    // Transform ray from world to object coordinates
+    Vector3f localOrigin = (_Minv * Vector4f(r.getOrigin(), 1.0f)).xyz();
+    Vector3f localDir    = (_Minv * Vector4f(r.getDirection(), 0.0f)).xyz();
+
+    // Do NOT normalize localDir — we need t to be consistent in world space
+    Ray localRay(localOrigin, localDir);
+
+    // Intersect with child. The t stored in h is already world-t from earlier
+    // hits (other objects), which matches because the ray direction in local
+    // space shares the same scalar parameterization as the world ray.
+    float oldT = h.getT();
+    if (_object->intersect(localRay, tmin, h)) {
+        // Transform the normal back to world coordinates
+        Vector3f localNormal = h.getNormal();
+        Vector3f worldNormal = (_MinvT * Vector4f(localNormal, 0.0f)).xyz().normalized();
+        h.set(h.getT(), h.getMaterial(), worldNormal);
+        return true;
+    }
+    (void)oldT;
     return false;
 }
